@@ -9,7 +9,7 @@ import {
   } from "react-native";
   import React, { useEffect, useState } from "react";
   import AsyncStorage from "@react-native-async-storage/async-storage";
-  import { useNavigation } from "@react-navigation/native";
+  import { useNavigation, useFocusEffect } from "@react-navigation/native";
   import {
     widthPercentageToDP as wp,
     heightPercentageToDP as hp,
@@ -19,28 +19,73 @@ import {
     const navigation = useNavigation();
     const [recipes, setrecipes] = useState([]);
     const [loading, setLoading] = useState(true);
-  
-    useEffect(() => {
-      const fetchrecipes = async () => {
+
+    // Fonction pour récupérer les recettes
+    const fetchrecipes = async () => {
+      try {
+        setLoading(true);
+        // Récupérer les recettes depuis AsyncStorage
+        const storedRecipes = await AsyncStorage.getItem("customrecipes");
         
-        };
-  
+        // Vérifier et mettre à jour l'état
+        if (storedRecipes) {
+          const parsedRecipes = JSON.parse(storedRecipes);
+          setrecipes(parsedRecipes);
+        } else {
+          setrecipes([]);
+        }
+      } catch (error) {
+        console.error("Erreur lors de la récupération des recettes:", error);
+      } finally {
+        // Mettre à jour l'état de chargement
+        setLoading(false);
+      }
+    };
+
+    useEffect(() => {
       fetchrecipes();
     }, []);
-  
-    const handleAddrecipe = () => {
 
+    // Rafraîchir les recettes quand on revient sur l'écran
+    useFocusEffect(
+      React.useCallback(() => {
+        fetchrecipes();
+      }, [])
+    );
+
+    const handleAddrecipe = () => {
+      // Naviguer vers RecipesFormScreen pour ajouter une nouvelle recette
+      navigation.navigate("RecipesFormScreen");
     };
   
     const handlerecipeClick = (recipe) => {
-
+      // Naviguer vers CustomRecipesScreen en passant la recette comme paramètre
+      navigation.navigate("CustomRecipesScreen", { recipe });
     };
     const deleterecipe = async (index) => {
-    
+      try {
+        // Cloner le tableau des recettes
+        const updatedrecipes = [...recipes];
+        
+        // Supprimer la recette à l'index spécifié
+        updatedrecipes.splice(index, 1);
+        
+        // Mettre à jour AsyncStorage
+        await AsyncStorage.setItem("customrecipes", JSON.stringify(updatedrecipes));
+        
+        // Mettre à jour l'état
+        setrecipes(updatedrecipes);
+      } catch (error) {
+        console.error("Erreur lors de la suppression de la recette:", error);
+      }
     };
   
     const editrecipe = (recipe, index) => {
-
+      // Naviguer vers RecipesFormScreen avec les données de la recette à modifier
+      navigation.navigate("RecipesFormScreen", { 
+        recipeToEdit: recipe, 
+        recipeIndex: index 
+      });
     };
   
     return (
@@ -64,17 +109,36 @@ import {
               recipes.map((recipe, index) => (
                 <View key={index} style={styles.recipeCard} testID="recipeCard">
                   <TouchableOpacity testID="handlerecipeBtn" onPress={() => handlerecipeClick(recipe)}>
-                  
+                    {recipe.image && (
+                      <Image 
+                        source={{ uri: recipe.image }} 
+                        style={styles.recipeImage}
+                        resizeMode="cover"
+                      />
+                    )}
                     <Text style={styles.recipeTitle}>{recipe.title}</Text>
                     <Text style={styles.recipeDescription} testID="recipeDescp">
-                  
+                      {recipe.description && recipe.description.length > 50 
+                        ? `${recipe.description.substring(0, 50)}...` 
+                        : recipe.description || "Aucune description disponible"}
                     </Text>
                   </TouchableOpacity>
   
                   {/* Edit and Delete Buttons */}
                   <View style={styles.actionButtonsContainer} testID="editDeleteButtons">
+                    <TouchableOpacity 
+                      style={styles.editButton}
+                      onPress={() => editrecipe(recipe, index)}
+                    >
+                      <Text style={styles.editButtonText}>Modifier</Text>
+                    </TouchableOpacity>
                     
-                
+                    <TouchableOpacity 
+                      style={styles.deleteButton}
+                      onPress={() => deleterecipe(index)}
+                    >
+                      <Text style={styles.deleteButtonText}>Supprimer</Text>
+                    </TouchableOpacity>
                   </View>
                 </View>
               ))
