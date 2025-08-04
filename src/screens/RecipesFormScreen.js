@@ -1,7 +1,17 @@
-import { View,Text,TextInput,TouchableOpacity,Image,StyleSheet,} from "react-native";
+import { 
+  View,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  Image,
+  StyleSheet,
+} from "react-native";
 import React, { useState } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import {widthPercentageToDP as wp,heightPercentageToDP as hp,} from "react-native-responsive-screen";
+import {
+  widthPercentageToDP as wp,
+  heightPercentageToDP as hp,
+} from "react-native-responsive-screen";
 
 export default function RecipesFormScreen({ route, navigation }) {
   const { recipeToEdit, recipeIndex, onrecipeEdited } = route.params || {};
@@ -12,7 +22,65 @@ export default function RecipesFormScreen({ route, navigation }) {
   );
 
   const saverecipe = async () => {
- 
+    try {
+      // Validation des champs obligatoires
+      if (!title.trim()) {
+        alert('Le titre est obligatoire');
+        return;
+      }
+      
+      if (!description.trim()) {
+        alert('La description est obligatoire');
+        return;
+      }
+
+      // Initialiser une nouvelle recette
+      const newrecipe = {
+        title: title.trim(),
+        image: image.trim(),
+        description: description.trim(),
+        createdAt: new Date().toISOString(),
+      };
+
+      // Récupérer les recettes existantes
+      const existingRecipesJSON = await AsyncStorage.getItem("customrecipes");
+      let recipes = [];
+      
+      if (existingRecipesJSON) {
+        recipes = JSON.parse(existingRecipesJSON);
+      }
+
+      // Mettre à jour ou ajouter une recette
+      if (recipeToEdit && recipeIndex !== undefined) {
+        // Mode modification : mettre à jour la recette existante
+        recipes[recipeIndex] = {
+          ...newrecipe,
+          createdAt: recipeToEdit.createdAt, // Conserver la date de création originale
+          updatedAt: new Date().toISOString(), // Ajouter une date de modification
+        };
+        
+        // Notifier le composant parent de la modification
+        if (onrecipeEdited) {
+          onrecipeEdited();
+        }
+        
+        console.log('Recette modifiée avec succès');
+      } else {
+        // Mode création : ajouter une nouvelle recette
+        recipes.push(newrecipe);
+        console.log('Nouvelle recette ajoutée avec succès');
+      }
+
+      // Enregistrer le tableau mis à jour dans AsyncStorage
+      await AsyncStorage.setItem("customrecipes", JSON.stringify(recipes));
+
+      // Revenir à l'écran précédent
+      navigation.goBack();
+
+    } catch (error) {
+      console.error('Erreur lors de l\'enregistrement de la recette:', error);
+      alert('Une erreur est survenue lors de l\'enregistrement. Veuillez réessayer.');
+    }
   };
 
   return (
@@ -58,12 +126,12 @@ const styles = StyleSheet.create({
     marginTop: hp(4),
     borderWidth: 1,
     borderColor: "#ddd",
-    padding: wp(.5),
+    padding: wp(0.5),
     marginVertical: hp(1),
   },
   image: {
     width: 300,
-    height:200,
+    height: 200,
     margin: wp(2),
   },
   imagePlaceholder: {
@@ -78,7 +146,7 @@ const styles = StyleSheet.create({
   },
   saveButton: {
     backgroundColor: "#4F75FF",
-    padding: wp(.5),
+    padding: wp(0.5),
     alignItems: "center",
     borderRadius: 5,
     marginTop: hp(2),
